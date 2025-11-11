@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calculator Plus</title>
+<style>
+  :root {
+    --bg: #111827;      /* dark */
+    --panel: #1f2937;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --key: #374151;
+    --key-op: #4b5563;
+    --accent: #22c55e;
+    --warn: #ef4444;
+    --ring: rgba(255,255,255,.12);
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f4f6;      /* light */
+    --panel: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --key: #e5e7eb;
+    --key-op: #d1d5db;
+    --accent: #16a34a;
+    --warn: #dc2626;
+    --ring: rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: grid; place-items: center;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+    padding: 24px;
+  }
+  .app {
+    width: min(860px, 96vw);
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr 320px;
+  }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--ring);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+  }
+  .title { margin: 0; font-weight: 700; letter-spacing: .2px; }
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    border-radius: 12px; padding: 10px 14px; font-weight: 600;
+  }
+  .btn.small { padding: 8px 12px; font-size: 14px; }
+  .btn.ghost { background: transparent; border: 1px solid var(--ring); color: var(--text); }
+  .display {
+    padding: 14px; border-top: 1px solid var(--ring);
+  }
+  .screen {
+    background: rgba(0,0,0,.18);
+    border: 1px solid var(--ring);
+    border-radius: 14px; padding: 14px;
+    min-height: 92px; display: grid; align-content: center;
+  }
+  .expr { color: var(--muted); min-height: 18px; font-size: 14px; text-align: right; word-break: break-all; }
+  .value { font-size: clamp(28px, 6vw, 42px); font-weight: 800; text-align: right; word-break: break-all; }
+
+  .keys { padding: 14px; border-top: 1px solid var(--ring); }
+  .grid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  button.key {
+    background: var(--key); color: var(--text);
+    border: 0; border-radius: 14px; padding: 16px;
+    font-size: 18px; font-weight: 700;
+    box-shadow: inset 0 -2px 0 rgba(255,255,255,.06), 0 4px 0 rgba(0,0,0,.25);
+    cursor: pointer; user-select: none;
+    transition: transform .06s ease, filter .15s ease, background .2s ease;
+  }
+  button.key:active { transform: translateY(1px); }
+  .op { background: var(--key-op); }
+  .accent { background: var(--accent); color: #071b0c; }
+  .danger { background: var(--warn); color: #fff; }
+  .span-2 { grid-column: span 2; }
+
+  .side { padding: 14px; display: grid; gap: 12px; }
+  .side h3 { margin: 0; font-size: 16px; color: var(--muted); }
+  .history {
+    display: grid; gap: 8px; max-height: 360px; overflow: auto; padding-right: 4px;
+  }
+  .hist-item {
+    display: grid; gap: 4px; padding: 10px; border: 1px solid var(--ring);
+    border-radius: 10px; background: transparent; cursor: pointer;
+  }
+  .hist-item:hover { background: rgba(0,0,0,.06); }
+  .hist-expr { color: var(--muted); font-size: 13px; }
+  .hist-val { font-weight: 700; }
+  .hint { color: var(--muted); font-size: 12px; text-align: center; padding: 6px 0 10px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- Calculator -->
+    <div class="card">
+      <div class="header">
+        <h2 class="title">Calculator Plus</h2>
+        <div style="display:flex; gap:8px;">
+          <button id="themeBtn" class="btn small ghost" title="Toggle theme">🌓 Theme</button>
+          <button id="clearHist" class="btn small ghost" title="Clear history">🗑 History</button>
+        </div>
+      </div>
+      <div class="display">
+        <div class="screen">
+          <div id="expr" class="expr"></div>
+          <div id="value" class="value">0</div>
+        </div>
+        <div class="hint">Keys: 0–9 • + − × ÷ • . • Enter(=) • Backspace • Esc</div>
+      </div>
+      <div class="keys">
+        <div class="grid">
+          <button class="key danger" data-action="clear">AC</button>
+          <button class="key op" data-action="sign">±</button>
+          <button class="key op" data-action="percent">%</button>
+          <button class="key op" data-op="÷">÷</button>
+
+          <button class="key" data-num="7">7</button>
+          <button class="key" data-num="8">8</button>
+          <button class="key" data-num="9">9</button>
+          <button class="key op" data-op="×">×</button>
+
+          <button class="key" data-num="4">4</button>
+          <button class="key" data-num="5">5</button>
+          <button class="key" data-num="6">6</button>
+          <button class="key op" data-op="-">−</button>
+
+          <button class="key" data-num="1">1</button>
+          <button class="key" data-num="2">2</button>
+          <button class="key" data-num="3">3</button>
+          <button class="key op" data-op="+">+</button>
+
+          <button class="key span-2" data-num="0">0</button>
+          <button class="key" data-action="dot">.</button>
+          <button class="key accent" data-action="equals">=</button>
+
+          <button class="key" data-action="backspace">⌫</button>
+          <button class="key" data-action="repeat">Ans</button>
+          <span style="opacity:.4;pointer-events:none"></span>
+          <span style="opacity:.4;pointer-events:none"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Pane -->
+    <aside class="card side">
+      <h3>History</h3>
+      <div id="history" class="history"></div>
+      <div class="hint">Click a history item to reuse its result.</div>
+    </aside>
+  </div>
+
+<script>
+(function(){
+  // THEME
+  const root = document.documentElement;
+  const savedTheme = localStorage.getItem("calc.theme") || "dark";
+  root.setAttribute("data-theme", savedTheme);
+  document.getElementById("themeBtn").onclick = () => {
+    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    localStorage.setItem("calc.theme", next);
+  };
+
+  // ELEMENTS
+  const exprEl = document.getElementById('expr');
+  const valueEl = document.getElementById('value');
+  const histEl = document.getElementById('history');
+  const clearHistBtn = document.getElementById('clearHist');
+
+  // STATE
+  let current = "0";     // string typed/displayed
+  let prev = null;       // number for pending op
+  let op = null;         // '+', '-', '*', '/'
+  let justEvaluated = false;
+  let lastAnswer = null;
+
+  // HISTORY
+  const loadHistory = () => JSON.parse(localStorage.getItem("calc.history") || "[]");
+  const saveHistory = (items) => localStorage.setItem("calc.history", JSON.stringify(items.slice(-10)));
+  const renderHistory = () => {
+    const items = loadHistory();
+    histEl.innerHTML = "";
+    items.slice().reverse().forEach(({e, v}) => {
+      const item = document.createElement("button");
+      item.className = "hist-item";
+      item.innerHTML = `<div class="hist-expr">${e}</div><div class="hist-val">${v}</div>`;
+      item.onclick = () => {
+        // reuse result as current
+        current = v.toString();
+        prev = null; op = null; justEvaluated = false;
+        updateDisplay();
+      };
+      histEl.appendChild(item);
+    });
+  };
+  clearHistBtn.onclick = () => { saveHistory([]); renderHistory(); };
+  renderHistory();
+
+  // HELPERS
+  function updateDisplay(){
+    valueEl.textContent = current;
+    const line = [prev !== null ? formatNum(prev) : "", op || "", (op && !justEvaluated ? current : "")]
+      .filter(Boolean).join(" ");
+    exprEl.textContent = line;
+  }
+
+  function formatNum(n){
+    // avoid 0.3000000004 style
+    const s = Number(n.toFixed(12)).toString();
+    return s.length > 18 ? Number(n.toPrecision(10)).toString() : s;
+  }
+
+  function inputDigit(d){
+    if (justEvaluated) { current = "0"; justEvaluated = false; }
+    if (current === "0") current = "";
+    if (current.replace("-", "").length >= 16) return;
+    current += d;
+    updateDisplay();
+  }
+
+  function inputDot(){
+    if (justEvaluated) { current = "0"; justEvaluated = false; }
+    if (!current.includes(".")) current += (current === "" || current === "-" ? "0." : ".");
+    updateDisplay();
+  }
+
+  function toggleSign(){
+    if (current === "0") { current = "-0"; }
+    else if (current.startsWith("-")) current = current.slice(1);
+    else current = "-" + current;
+    updateDisplay();
+  }
+
+  function percent(){
+    const num = Number(current || "0");
+    current = formatNum(num / 100);
+    updateDisplay();
+  }
+
+  function setOp(next){
+    if (current === "" || current === "-") return;
+    const num = Number(current);
+    if (prev === null) prev = num;
+    else if (op) prev = compute(prev, num, op);
+    op = next;
+    current = "0";
+    justEvaluated = false;
+    updateDisplay();
+  }
+
+  function compute(a, b, operator){
+    switch(operator){
+      case "+": return a + b;
+      case "-": return a - b;
+      case "*": return a * b;
+      case "/": return b === 0 ? NaN : a / b;
+      default:  return b;
+    }
+  }
+
+  function equals(){
+    if (op === null || current === "" || current === "-") return;
+    const a = prev, b = Number(current);
+    const res = compute(a, b, op);
+    const out = (Number.isNaN(res) || !Number.isFinite(res)) ? "Error" : formatNum(res);
+    const expression = `${formatNum(a)} ${op} ${formatNum(b)}`;
+    current = out.toString();
+    lastAnswer = current !== "Error" ? Number(current) : null;
+
+    // push to history if valid
+    if (current !== "Error") {
+      const items = loadHistory();
+      items.push({ e: expression + " =", v: Number(current) });
+      saveHistory(items);
+      renderHistory();
+    }
+
+    prev = null; op = null; justEvaluated = true;
+    updateDisplay();
+  }
+
+  function clearAll(){
+    current = "0"; prev = null; op = null; justEvaluated = false; updateDisplay();
+  }
+
+  function backspace(){
+    if (justEvaluated) { return; }
+    current = current.length > 1 ? current.slice(0, -1) : "0";
+    updateDisplay();
+  }
+
+  function repeatAnswer(){
+    if (lastAnswer !== null) {
+      current = formatNum(lastAnswer);
+      updateDisplay();
+    }
+  }
+
+  // EVENTS: clicks
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("button.key");
+    if (!btn) return;
+
+    if (btn.dataset.num) return inputDigit(btn.dataset.num);
+    if (btn.dataset.op) {
+      const map = { "÷": "/", "×": "*", "+": "+", "-": "-" };
+      return setOp(map[btn.dataset.op]);
+    }
+
+    const act = btn.dataset.action;
+    if (act === "dot") return inputDot();
+    if (act === "clear") return clearAll();
+    if (act === "equals") return equals();
+    if (act === "backspace") return backspace();
+    if (act === "sign") return toggleSign();
+    if (act === "percent") return percent();
+    if (act === "repeat") return repeatAnswer();
+  });
+
+  // EVENTS: keyboard
+  document.addEventListener("keydown", (e) => {
+    const k = e.key;
+    if (/\d/.test(k)) return inputDigit(k);
+    if (k === ".") return inputDot();
+    if (k === "Backspace") return backspace();
+    if (k === "Escape") return clearAll();
+    if (k === "Enter" || k === "=") return equals();
+
+    if (["+","-","*","/"].includes(k)) return setOp(k);
+  });
+
+  // initial
+  updateDisplay();
+})();
+</script>
+</body>
+</html>
